@@ -1,0 +1,201 @@
+---
+title: "employee_analysis"
+output: html_document
+date: "2023-10-15"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+library(tidyverse)
+library(tidytext)
+library(wordcloud)
+library(lubridate)
+library(plotly)
+library(RColorBrewer)
+library(naniar)
+library(scales)
+library(janitor)
+library(DT)
+library(ggplot2)
+```
+
+```{r}
+df = read.csv("Employee.csv")
+```
+
+```{r}
+glimpse(df)
+```
+
+```{r}
+#No null values in our data
+sum(is.na(df))
+```
+```{r}
+head(df)
+```
+
+
+```{r}
+df_group <- df %>% 
+  group_by(Education, Gender) %>%
+  summarise('Total' = n())
+```
+```{r}
+df %>% ggplot(aes(x=Education, fill = Education)) + geom_bar() + facet_wrap(~Gender) + theme_minimal() +
+  theme(legend.title = element_blank())
+```
+```{r}
+experience <- table(df$ExperienceInCurrentDomain)
+```
+```{r}
+df %>% ggplot(aes(x = ExperienceInCurrentDomain)) +
+  geom_histogram(binwidth = 1, fill = "lightblue", color = "black") +
+  labs(title = "Histogram of Experience in Current Domain", x = "Years of Experience", y = "Frequency") +
+  theme_minimal()
+```
+
+
+```{r}
+df %>% 
+  group_by(Gender) %>%
+  summarise('Average Age' = mean(Age), 'Old Age' = max(Age), 'Youngest Age' = min(Age), 'ExperienceInCurrentDomain' = mean(ExperienceInCurrentDomain))
+```
+```{r}
+df %>% 
+  group_by(City) %>%
+  summarise('Average Year Joined' = mean(JoiningYear))
+```
+```{r}
+df %>% ggplot(aes(x=JoiningYear)) + geom_bar()
+```
+
+```{r}
+ggplot(df, aes(x = PaymentTier, y = ExperienceInCurrentDomain)) +
+  geom_jitter(width = 0.2, alpha = 0.5) +
+  labs(title = "Payment Tier vs. Experience in Current Domain", x = "Payment Tier", y = "Experience in Current Domain") +
+  theme_minimal()
+```
+```{r}
+cor(df$PaymentTier, df$ExperienceInCurrentDomain, method = "pearson")
+```
+```{r}
+df %>% group_by(LeaveOrNot) %>%
+  summarise('Average Age' = mean(Age), 'Total' = n())
+```
+```{r}
+df %>% ggplot(aes(x=Age)) + geom_bar() + theme_minimal()
+```
+
+```{r}
+df_LeaveOrNot_Gender <- df %>% group_by(LeaveOrNot,Gender) %>%
+  summarise('Average Age' = mean(Age), 'Total' = n())
+
+df_LeaveOrNot_Gender %>% 
+  ggplot(aes(x = LeaveOrNot, y = Total, fill = Gender)) + 
+  geom_bar(stat = "identity", position = "dodge", width = 0.7) + 
+  facet_wrap(~Gender) +
+  labs(title = "Total by LeaveOrNot and Gender", x = "LeaveOrNot", y = "Total") +
+  scale_fill_brewer(palette = "Set1") +  # You can choose different color palettes
+  theme_minimal()
+```
+
+```{r}
+df %>% group_by(EverBenched) %>%
+  summarise('Average Age' = mean(Age), 'Total' = n())
+```
+```{r}
+total_row <- nrow(df)
+
+
+df_everbenched_gender <- df %>% group_by(EverBenched,Gender) %>%
+  summarise('Average Age' = mean(Age), 'Total' = n(), 'Percentage' = paste0(round((Total / total_row) * 100, 2), "%"))
+
+df_everbenched_gender %>% ggplot(aes(x = Gender, y = Total, fill = Gender)) + 
+  geom_bar(stat = "identity", position = "dodge") + facet_wrap(~EverBenched)
+```
+
+
+```{r}
+df_leaveornot_city <- df %>% group_by(LeaveOrNot,City) %>%
+  summarise('Total' = n())
+```
+```{r}
+ggplot(df_leaveornot_city, aes(x = City, y = Total, fill = as.factor(LeaveOrNot))) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Total by LeaveOrNot and City", x = "City", y = "Total") +
+  scale_fill_discrete(name = "LeaveOrNot") +
+  theme_minimal()
+```
+```{r}
+df %>% 
+  ggplot(aes(x = as.factor(LeaveOrNot), fill = EverBenched)) +
+  geom_bar(position = "dodge") +
+  labs(title = "EverBenched vs. LeaveOrNot", x = "LeaveOrNot", y = "Proportion") +
+  scale_fill_manual(values = c("No" = "red", "Yes" = "blue")) +
+  theme_minimal()
+```
+```{r}
+df_joiningyear_leaveornot <- df %>% group_by(LeaveOrNot,JoiningYear) %>%
+  summarise('Total' = n())
+```
+```{r}
+df_paymenttier_leaveornot <- df %>% group_by(LeaveOrNot,PaymentTier) %>%
+  summarise('Total' = n())
+
+df_paymenttier_leaveornot %>% ggplot(aes(x=PaymentTier, y = Total, fill = as.factor(LeaveOrNot))) + geom_bar(position = "stack", stat='identity') + labs(
+    title = "Total by PaymentTier and LeaveOrNot",
+    x = "PaymentTier",
+    y = "Total",
+    fill = "LeaveOrNot"
+  ) +
+  theme_minimal() 
+```
+```{r}
+df_age_leaveornot <- df %>% group_by(LeaveOrNot,Age) %>%
+  summarise('Total' = n())
+
+df_age_leaveornot %>% ggplot(aes(x=Age, y = Total, fill = as.factor(LeaveOrNot))) + geom_bar(position = "stack", stat='identity') + labs(
+    title = "Total by Age and LeaveOrNot",
+    x = "Age",
+    y = "Total",
+    fill = "LeaveOrNot"
+  ) +
+  theme_minimal() 
+```
+```{r}
+df_experience_leaveornot <- df %>% group_by(LeaveOrNot,ExperienceInCurrentDomain) %>%
+  summarise('Total' = n())
+
+df_experience_leaveornot %>% ggplot(aes(x=ExperienceInCurrentDomain, y = Total, fill = as.factor(LeaveOrNot))) + geom_bar(position = "stack", stat='identity') + labs(
+    title = "Total by ExperienceInCurrentDomain and LeaveOrNot",
+    x = "ExperienceInCurrentDomain",
+    y = "Total",
+    fill = "LeaveOrNot"
+  ) +
+  theme_minimal() 
+```
+
+```{r}
+numeric_df <- df[sapply(df, is.numeric)]
+correlation_matrix <- cor(numeric_df)
+heatmap(correlation_matrix, 
+        col = colorRampPalette(c("blue", "white", "red"))(100), 
+        symm = TRUE, 
+        main = "Correlation Heatmap")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
